@@ -10,7 +10,7 @@ class MobileInsightRecipe(Recipe):
 
     mi_git            = 'https://github.com/uclawing/mobileInsight-core.git'
     mi_branch		  = 'dev-2.2.0'
-    local_src         = '/home/vagrant/mi-dev/MobileInsight-core'
+    local_src         = '/home/vagrant/mi-dev/mobileInsight-core'
     version           = '2.5'
     toolchain_version = 4.9          # default GCC toolchain version we try to use
     depends           = ['python2']  # any other recipe names that must be built before this one
@@ -115,7 +115,7 @@ class MobileInsightRecipe(Recipe):
                     tmp_dir,
                     _tail     = 20,
                     _critical = True)
-            tmp_dir = join(tmp_dir, 'MobileInsight-core')
+            tmp_dir = join(tmp_dir, 'mobileInsight-core')
 
         shprint(sh.mv,
                 join(tmp_dir, 'mobile_insight'),

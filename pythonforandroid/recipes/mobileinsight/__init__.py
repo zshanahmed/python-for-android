@@ -1,3 +1,6 @@
+# MobileInsight Recipe for python-for-android
+# Authors: Zengwen Yuan, Jiayao Li
+
 from pythonforandroid.toolchain import Recipe, shprint, current_directory
 from pythonforandroid.logger import info, debug, shprint, warning
 from os.path import exists, join, isdir, split
@@ -9,7 +12,7 @@ LOCAL_DEBUG = False
 class MobileInsightRecipe(Recipe):
 
     mi_git            = 'https://github.com/mobile-insight/mobileinsight-core.git'
-    mi_branch         = 'dev-2.2.0'
+    mi_branch         = 'master'
     local_src         = '/home/vagrant/mi-dev/mobileinsight-core'
     version           = '2.5'
     toolchain_version = 4.9          # default GCC toolchain version we try to use

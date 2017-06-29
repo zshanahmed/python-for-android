@@ -23,7 +23,7 @@ setup(
     description = 'Mobile network monitoring and analysis',
     author = 'Yuanjie Li, Zengwen Yuan, Jiayao Li',
     author_email = 'yuanjie.li@cs.ucla.edu, zyuan@cs.ucla.edu, likayo@ucla.edu',
-    url = 'http://metro.cs.ucla.edu/mobile_insight',
+    url = 'http://www.mobileinsight.net',
     license = 'Apache License 2.0',
     packages = ['mobile_insight',
                 'mobile_insight.analyzer',

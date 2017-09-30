@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
   /* AND: P4A uses env vars...not sure what's best */
   LOGP("Initialize Python for Android");
   env_argument = getenv("ANDROID_ARGUMENT");
-  setenv("ANDROID_APP_PATH", env_argument, 1);
+  setenv("ANDROID_UNPACK", env_argument, 1);
   env_entrypoint = getenv("ANDROID_ENTRYPOINT");
   env_logname = getenv("PYTHON_NAME");
   
@@ -286,8 +286,6 @@ JNIEXPORT void JNICALL Java_org_kivy_android_PythonService_nativeStart(
     jstring j_python_name, jstring j_python_home, jstring j_python_path,
     jstring j_arg) {
 
-  LOGP("Yuanjie: python PythonService_nativeStart SDL2");
-
   jboolean iscopy;
   const char *android_private =
       (*env)->GetStringUTFChars(env, j_android_private, &iscopy);
@@ -306,6 +304,7 @@ JNIEXPORT void JNICALL Java_org_kivy_android_PythonService_nativeStart(
   setenv("ANDROID_PRIVATE", android_private, 1);
   setenv("ANDROID_ARGUMENT", android_argument, 1);
   setenv("ANDROID_APP_PATH", android_argument, 1);
+  setenv("ANDROID_UNPACK", android_argument, 1);
   setenv("ANDROID_ENTRYPOINT", service_entrypoint, 1);
   setenv("PYTHONOPTIMIZE", "2", 1);
   setenv("PYTHON_NAME", python_name, 1);

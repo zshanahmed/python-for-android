@@ -57,6 +57,13 @@
                  android:theme="@android:style/Theme.NoTitleBar{% if not args.window %}.Fullscreen{% endif %}"
                  android:hardwareAccelerated="true" >
 
+        <receiver android:name="org.kivy.android.MobileInsightBroadcastReceiver" 
+                  android:enabled="true" >
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED" />
+        </intent-filter>
+        </receiver>
+
         {% for m in args.meta_data %}
         <meta-data android:name="{{ m.split('=', 1)[0] }}" android:value="{{ m.split('=', 1)[-1] }}"/>{% endfor %}
         <meta-data android:name="wakelock" android:value="{% if args.wakelock %}1{% else %}0{% endif %}"/>

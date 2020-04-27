@@ -9,13 +9,13 @@ import sh
 from pythonforandroid.logger import info, shprint, warning
 from pythonforandroid.toolchain import Recipe, current_directory
 
-LOCAL_DEBUG = False
+LOCAL_DEBUG = True
 
 
 class MobileInsightRecipe(Recipe):
     mi_git = 'https://github.com/mobile-insight/mobileinsight-core.git'
     mi_branch = 'dev-py3'
-    local_src = '/home/vagrant/mi-dev/mobileinsight-core'
+    local_src = '/Users/yuanjieli/Desktop/MI-5.0/mobileinsight-core'
     version = '5.0'
     toolchain_version = 4.9  # default GCC toolchain version we try to use
     depends = ['python3']  # any other recipe names that must be built before this one
@@ -55,17 +55,19 @@ class MobileInsightRecipe(Recipe):
         warning("get_recipe_env(self, arch), use toolchain version = {toolchain_version}".format(
             toolchain_version=self.toolchain_version))
         env['CFLAGS'] += ' -fPIC'
-        env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/gnu-libstdc++/{toolchain_version}/include'.format(
+
+        env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/llvm-libc++/include'.format(
             ndk_dir=self.ctx.ndk_dir,
             toolchain_version=self.toolchain_version)
-        env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/gnu-libstdc++/{toolchain_version}/libs/{arch}/include'.format(
+        env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}/include'.format(
             ndk_dir=self.ctx.ndk_dir,
             toolchain_version=self.toolchain_version,
             arch=arch)
-        env['LDFLAGS'] += ' -L{ndk_dir}/sources/cxx-stl/gnu-libstdc++/{toolchain_version}/libs/{arch}'.format(
+        env['LDFLAGS'] += ' -L{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}'.format(
             ndk_dir=self.ctx.ndk_dir,
             toolchain_version=self.toolchain_version,
             arch=arch)
+
         env['LDFLAGS'] += ' -shared'
         env['LDFLAGS'] += ' -lgnustl_shared -llog'
         env['STRIP'] = str.split(env['STRIP'])[0]
@@ -166,11 +168,12 @@ class MobileInsightRecipe(Recipe):
             shprint(sh.find, build_lib[0], '-name', '*.so', '-exec', env['STRIP'], '{}', ';', _tail=20, _critical=True)
 
         try:
-            warning('Copying GNU STL shared lib to {libs_dir}/{arch}'.format(
+            warning('Copying LLVM libc++ STL shared lib to {libs_dir}/{arch}'.format(
                 libs_dir=self.ctx.libs_dir,
                 arch=arch))
+
             shprint(sh.cp,
-                    '{ndk_dir}/sources/cxx-stl/gnu-libstdc++/{toolchain_version}/libs/{arch}/libgnustl_shared.so'.format(
+                    '{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}/libgnustl_shared.so'.format(
                         ndk_dir=self.ctx.ndk_dir,
                         toolchain_version=self.toolchain_version,
                         arch=arch),
@@ -178,7 +181,7 @@ class MobileInsightRecipe(Recipe):
                         libs_dir=self.ctx.libs_dir,
                         arch=arch))
         except:
-            warning('Failed to copy GNU STL shared lib!')
+            warning('Failed to copy LLVM libc++ STL shared lib!')
 
     def build_cython_components(self, arch):
         env = self.get_recipe_env(arch)

@@ -69,7 +69,7 @@ class MobileInsightRecipe(Recipe):
             arch=arch)
 
         env['LDFLAGS'] += ' -shared'
-        env['LDFLAGS'] += ' -lgnustl_shared -llog'
+        env['LDFLAGS'] += ' -lc++_shared -llog'
         env['STRIP'] = str.split(env['STRIP'])[0]
 
         # warning("Testing the env")
@@ -173,7 +173,7 @@ class MobileInsightRecipe(Recipe):
                 arch=arch))
 
             shprint(sh.cp,
-                    '{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}/libgnustl_shared.so'.format(
+                    '{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}/libc++_shared.so'.format(
                         ndk_dir=self.ctx.ndk_dir,
                         toolchain_version=self.toolchain_version,
                         arch=arch),

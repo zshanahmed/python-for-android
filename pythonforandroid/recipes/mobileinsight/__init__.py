@@ -52,8 +52,8 @@ class MobileInsightRecipe(Recipe):
     def get_recipe_env(self, arch):
         env = super(MobileInsightRecipe, self).get_recipe_env(arch)
 
-        warning("get_recipe_env(self, arch), use toolchain version = {toolchain_version}".format(
-            toolchain_version=self.toolchain_version))
+        # warning("get_recipe_env(self, arch), use toolchain version = {toolchain_version}".format(
+        #     toolchain_version=self.toolchain_version))
         env['CFLAGS'] += ' -fPIC'
 
         env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/llvm-libc++/include'.format(
@@ -219,7 +219,7 @@ class MobileInsightRecipe(Recipe):
         super(MobileInsightRecipe, self).postbuild_arch(arch)
 
         # TODO
-        warning('Should remove mobileinsight build tools here, skipping for now')
+        # warning('Should remove mobileinsight build tools here, skipping for now')
         #     try rm -rf $BUILD_PATH/python-install/lib/python*/site-packages/mobile_insight/tools
 
 

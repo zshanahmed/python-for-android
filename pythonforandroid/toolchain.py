@@ -968,6 +968,8 @@ class ToolchainCL(object):
 
                 build_tools_versions = os.listdir(join(ctx.sdk_dir,
                                                        'build-tools'))
+                build_tools_versions = [f for f in build_tools_versions
+                                        if not f.startswith('.')]
                 build_tools_versions = sorted(build_tools_versions,
                                               key=LooseVersion)
                 build_tools_version = build_tools_versions[-1]

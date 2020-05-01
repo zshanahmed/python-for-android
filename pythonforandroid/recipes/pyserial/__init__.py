@@ -74,7 +74,10 @@ class PyserialRecipe(Recipe):
         with current_directory(self.get_build_dir(arch.arch)):
             hostpython = sh.Command(self.ctx.hostpython)
 
-            shprint(hostpython, 'setup.py', 'install', '-O2', _env=env, _tail=10, _critical=True)
+            shprint(hostpython, 'setup.py', 'install', '-O2',
+                '--root={}'.format(self.ctx.get_python_install_dir()),
+                '--install-lib=.',
+                _env=env, _tail=10, _critical=True)
 
     def postbuild_arch(self, arch):
         super(PyserialRecipe, self).postbuild_arch(arch)

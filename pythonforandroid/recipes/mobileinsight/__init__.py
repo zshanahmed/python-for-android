@@ -166,7 +166,10 @@ class MobileInsightRecipe(Recipe):
                 shprint(sh.cp, join(self.get_recipe_dir(), 'setup.py'), app_setup)
 
             shprint(hostpython, 'setup.py', 'build_ext', '-v', _env=env, _tail=10, _critical=True)
-            shprint(hostpython, 'setup.py', 'install', '-O2', _env=env, _tail=10, _critical=True)
+            shprint(hostpython, 'setup.py', 'install', '-O2',
+                '--root={}'.format(self.ctx.get_python_install_dir()),
+                '--install-lib=.',
+                _env=env, _tail=10, _critical=True)
 
             build_lib = glob.glob('./build/lib*')
             assert len(build_lib) == 1

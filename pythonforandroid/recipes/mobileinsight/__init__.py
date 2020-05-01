@@ -63,10 +63,17 @@ class MobileInsightRecipe(Recipe):
             ndk_dir=self.ctx.ndk_dir,
             toolchain_version=self.toolchain_version,
             arch=arch)
+        env['CFLAGS'] += ' -I{}'.format(
+            self.ctx.python_recipe.include_root(arch.arch)
+        )
         env['LDFLAGS'] += ' -L{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}'.format(
             ndk_dir=self.ctx.ndk_dir,
             toolchain_version=self.toolchain_version,
             arch=arch)
+        env['LDFLAGS'] += ' -L{} -lpython{}'.format(
+            self.ctx.python_recipe.link_root(arch.arch),
+            self.ctx.python_recipe.major_minor_version_string,
+        )
 
         env['LDFLAGS'] += ' -shared'
         env['LDFLAGS'] += ' -lc++_shared -llog'

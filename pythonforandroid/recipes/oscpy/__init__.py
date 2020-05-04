@@ -11,7 +11,7 @@ LOCAL_DEBUG = False
 class OscpyRecipe(Recipe):
     oscpy_git = 'https://github.com/kivy/oscpy.git'
     oscpy_branch = 'master'
-    version = '0.5.0'
+    version = '5.0'
     toolchain_version = 4.9  # default GCC toolchain version we try to use
     depends = ['python3']  # any other recipe names that must be built before this one
 

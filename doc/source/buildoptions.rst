@@ -17,35 +17,30 @@ This option builds Python 2.7.2 for your selected Android
 architecture. There are no special requirements, all the building is
 done locally.
 
-The python2 build is also the way python-for-android originally
-worked, even in the old toolchain.
-
 
 python3
 ~~~~~~~
 
-.. warning::
-   Python3 support is experimental, and some of these details
-   may change as it is improved and fully stabilised.
+Python3 is supported in two ways. The default method uses CPython 3.7+
+and works with any recent version of the Android NDK.
 
-.. note:: You must manually download the `CrystaX NDK
-   <https://www.crystax.net/android/ndk>`__ and tell
-   python-for-android to use it with ``--ndk-dir /path/to/NDK``.
+Select Python 3 by adding it to your requirements,
+e.g. ``--requirements=python3``.
 
-Select this by adding the ``python3crystax`` recipe to your
-requirements, e.g. ``--requirements=python3crystax``.
+.. note:: ctypes is not included automatically, if you would like to use it
+          then add libffi to your requirements,
+          e.g. ``--requirements=kivy,libffi,python3``.
 
-This uses the prebuilt Python from the `CrystaX NDK
-<https://www.crystax.net/android/ndk>`__, a drop-in replacement for
-Google's official NDK which includes many improvements. You
-*must* use the CrystaX NDK 10.3.0 or higher when building with
-python3. You can get it `here
-<https://www.crystax.net/en/download>`__.
 
-The python3crystax build is handled quite differently to python2 so
-there may be bugs or surprising behaviours. If you come across any,
-feel free to `open an issue
-<https://github.com/kivy/python-for-android>`__.
+CrystaX python3
+~~~~~~~~~~~~~~~
+
+python-for-android no longer supports building for Python 3 using the CrystaX
+NDK. Instead, use the python3 recipe, which can be built using the normal
+Google NDK.
+
+.. note:: The last python-for-android version supporting CrystaX was `0.7.0.
+          <https://github.com/kivy/python-for-android/archive/0.7.0.zip>`__
 
 .. _bootstrap_build_options:
 
@@ -85,7 +80,7 @@ The sdl2 bootstrap supports the following additional command line
 options (this list may not be exhaustive):
 
 - ``--private``: The directory containing your project files.
-- ``--package``: The Java package name for your project. Choose e.g. ``org.example.yourapp``.
+- ``--package``: The Java package name for your project. e.g. ``org.example.yourapp``.
 - ``--name``: The app name.
 - ``--version``: The version number.
 - ``--orientation``: Usually one of ``portait``, ``landscape``,
@@ -145,7 +140,7 @@ started), it will instead display a loading screen until the server is
 ready.
 
 - ``--private``: The directory containing your project files.
-- ``--package``: The Java package name for your project. Choose e.g. ``org.example.yourapp``.
+- ``--package``: The Java package name for your project. e.g. ``org.example.yourapp``.
 - ``--name``: The app name.
 - ``--version``: The version number.
 - ``--orientation``: Usually one of ``portait``, ``landscape``,
@@ -182,31 +177,17 @@ ready.
   access. Defaults to 5000.
 
 
-pygame
-~~~~~~
-
-You can use this with ``--bootstrap=pygame``, or simply include the
-``pygame`` recipe in your ``--requirements``.
-
-The pygame bootstrap is the original backend used by Kivy, and still
-works fine for use with Kivy apps. It may also work for pure pygame
-apps, but hasn't been developed with this in mind.
-
-This bootstrap will eventually be deprecated in favour of sdl2, but
-not before the sdl2 bootstrap includes all the features that would be
-lost.
-
 Build options
 %%%%%%%%%%%%%
 
-The pygame bootstrap supports the following additional command line
+The sdl2 bootstrap supports the following additional command line
 options (this list may not be exhaustive):
 
 - ``--private``: The directory containing your project files.
 - ``--dir``: The directory containing your project files if you want
   them to be unpacked to the external storage directory rather than
   the app private directory.
-- ``--package``: The Java package name for your project. Choose e.g. ``org.example.yourapp``.
+- ``--package``: The Java package name for your project. e.g. ``org.example.yourapp``.
 - ``--name``: The app name.
 - ``--version``: The version number.
 - ``--orientation``: One of ``portait``, ``landscape`` or ``sensor``
@@ -237,3 +218,25 @@ options (this list may not be exhaustive):
 - ``add-source``: Add a source directory to the app's Java code.
 - ``--compile-pyo``: Optimise .py files to .pyo.
 - ``--resource``: A key=value pair to add in the string.xml resource file.
+
+
+Requirements blacklist (APK size optimization)
+----------------------------------------------
+
+To optimize the size of the `.apk` file that p4a builds for you,
+you can **blacklist** certain core components. Per default, p4a
+will add python *with batteries included* as would be expected on
+desktop, including openssl, sqlite3 and other components you may
+not use.
+
+To blacklist an item, specify the ``--blacklist-requirements`` option::
+
+    p4a apk ... --blacklist-requirements=sqlite3
+
+At the moment, the following core components can be blacklisted
+(if you don't want to use them) to decrease APK size:
+
+- ``android``  disables p4a's android module (see :ref:`reference-label-for-android-module`)
+- ``libffi``  disables ctypes stdlib module
+- ``openssl``   disables ssl stdlib module
+- ``sqlite3``   disables sqlite3 stdlib module

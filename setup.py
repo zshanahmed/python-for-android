@@ -1,10 +1,11 @@
 
-from setuptools import setup, find_packages
+import glob
+from io import open  # for open(..,encoding=...) parameter in python 2
 from os import walk
 from os.path import join, dirname, sep
 import os
-import glob
 import re
+from setuptools import setup, find_packages
 
 # NOTE: All package data should also be set in MANIFEST.in
 
@@ -16,14 +17,15 @@ package_data = {'': ['*.tmpl',
 data_files = []
 
 
-if os.name == 'nt':
-    install_reqs = ['appdirs', 'colorama>=0.3.3', 'jinja2',
-                        'six']
-else:
-    # don't use sh after 1.12.5, we have performance issues
-    # https://github.com/amoffat/sh/issues/378
-    install_reqs = ['appdirs', 'colorama>=0.3.3', 'sh>=1.10,<1.12.5', 'jinja2',
-                        'six']
+
+# must be a single statement since buildozer is currently parsing it, refs:
+# https://github.com/kivy/buildozer/issues/722
+install_reqs = [
+    'appdirs', 'colorama>=0.3.3', 'jinja2', 'six',
+    'enum34; python_version<"3.4"', 'sh>=1.10; sys_platform!="nt"',
+    'pep517<0.7.0"', 'pytoml', 'virtualenv<20'
+]
+# (pep517, pytoml and virtualenv are used by pythonpackage.py)
 
 # By specifying every file manually, package_data will be able to
 # include them in binary distributions. Note that we have to add
@@ -46,7 +48,7 @@ recursively_include(package_data, 'pythonforandroid/recipes',
 recursively_include(package_data, 'pythonforandroid/bootstraps',
                     ['*.properties', '*.xml', '*.java', '*.tmpl', '*.txt', '*.png',
                      '*.mk', '*.c', '*.h', '*.py', '*.sh', '*.jpg', '*.aidl',
-                     '*.gradle', ])
+                     '*.gradle', '.gitkeep', 'gradlew*', '*.jar', "*.patch", ])
 recursively_include(package_data, 'pythonforandroid/bootstraps',
                     ['sdl-config', ])
 recursively_include(package_data, 'pythonforandroid/bootstraps/webview',
@@ -54,13 +56,19 @@ recursively_include(package_data, 'pythonforandroid/bootstraps/webview',
 recursively_include(package_data, 'pythonforandroid',
                     ['liblink', 'biglink', 'liblink.sh'])
 
-with open(join(dirname(__file__), 'README.rst')) as fileh:
+with open(join(dirname(__file__), 'README.md'),
+          encoding="utf-8",
+          errors="replace",
+         ) as fileh:
     long_description = fileh.read()
 
 init_filen = join(dirname(__file__), 'pythonforandroid', '__init__.py')
 version = None
 try:
-    with open(init_filen) as fileh:
+    with open(init_filen,
+              encoding="utf-8",
+              errors="replace"
+             ) as fileh:
         lines = fileh.readlines()
 except IOError:
     pass
@@ -79,22 +87,23 @@ setup(name='python-for-android',
       version=version,
       description='Android APK packager for Python scripts and apps',
       long_description=long_description,
+      long_description_content_type='text/markdown',
       author='The Kivy team',
       author_email='kivy-dev@googlegroups.com',
-      url='https://github.com/kivy/python-for-android', 
-      license='MIT', 
+      url='https://github.com/kivy/python-for-android',
+      license='MIT',
       install_requires=install_reqs,
       entry_points={
           'console_scripts': [
-              'python-for-android = pythonforandroid.toolchain:main',
-              'p4a = pythonforandroid.toolchain:main',
+              'python-for-android = pythonforandroid.entrypoints:main',
+              'p4a = pythonforandroid.entrypoints:main',
               ],
           'distutils.commands': [
               'apk = pythonforandroid.bdistapk:BdistAPK',
               ],
           },
       classifiers = [
-          'Development Status :: 4 - Beta',
+          'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Developers',
           'License :: OSI Approved :: MIT License',
           'Operating System :: Microsoft :: Windows',
@@ -103,7 +112,6 @@ setup(name='python-for-android',
           'Operating System :: MacOS :: MacOS X',
           'Operating System :: Android',
           'Programming Language :: C',
-          'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 3',
           'Topic :: Software Development',
           'Topic :: Utilities',

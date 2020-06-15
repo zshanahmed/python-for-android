@@ -1,35 +1,56 @@
-from pythonforandroid.recipe import NDKRecipe
+from pythonforandroid.recipe import Recipe
 from pythonforandroid.logger import shprint
 from pythonforandroid.util import current_directory
-from os.path import join, exists
+from os.path import join
 import sh
 
 
-class JpegRecipe(NDKRecipe):
-	name = 'jpeg'
-	version = 'linaro-android'
-	url = 'git://git.linaro.org/people/tomgall/libjpeg-turbo/libjpeg-turbo.git'
+class JpegRecipe(Recipe):
+    '''
+    .. versionchanged:: 0.6.0
+        rewrote recipe to be build with clang and updated libraries to latest
+        version of the official git repo.
+    '''
+    name = 'jpeg'
+    version = '2.0.1'
+    url = 'https://github.com/libjpeg-turbo/libjpeg-turbo/archive/{version}.tar.gz'  # noqa
+    built_libraries = {'libjpeg.a': '.', 'libturbojpeg.a': '.'}
+    # we will require this below patch to build the shared library
+    # patches = ['remove-version.patch']
 
-	patches = ['build-static.patch']
+    def build_arch(self, arch):
+        build_dir = self.get_build_dir(arch.arch)
 
-	generated_libraries = ['libjpeg.a']
+        # TODO: Fix simd/neon
+        with current_directory(build_dir):
+            env = self.get_recipe_env(arch)
+            toolchain_file = join(self.ctx.ndk_dir,
+                                  'build/cmake/android.toolchain.cmake')
 
-	def prebuild_arch(self, arch):
-		super(JpegRecipe, self).prebuild_arch(arch)
+            shprint(sh.rm, '-f', 'CMakeCache.txt', 'CMakeFiles/')
+            shprint(sh.cmake, '-G', 'Unix Makefiles',
+                    '-DCMAKE_SYSTEM_NAME=Android',
+                    '-DCMAKE_SYSTEM_PROCESSOR={cpu}'.format(cpu='arm'),
+                    '-DCMAKE_POSITION_INDEPENDENT_CODE=1',
+                    '-DCMAKE_ANDROID_ARCH_ABI={arch}'.format(arch=arch.arch),
+                    '-DCMAKE_ANDROID_NDK=' + self.ctx.ndk_dir,
+                    '-DCMAKE_C_COMPILER={cc}'.format(cc=arch.get_clang_exe()),
+                    '-DCMAKE_CXX_COMPILER={cc_plus}'.format(
+                        cc_plus=arch.get_clang_exe(plus_plus=True)),
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX=./install',
+                    '-DCMAKE_TOOLCHAIN_FILE=' + toolchain_file,
 
-		build_dir = self.get_build_dir(arch.arch)
-		app_mk = join(build_dir, 'Application.mk')
-		if not exists(app_mk):
-			shprint(sh.cp, join(self.get_recipe_dir(), 'Application.mk'), app_mk)
-		jni_ln = join(build_dir, 'jni')
-		if not exists(jni_ln):
-			shprint(sh.ln, '-s', build_dir, jni_ln)
+                    '-DANDROID_ABI={arch}'.format(arch=arch.arch),
+                    '-DANDROID_ARM_NEON=ON',
+                    '-DENABLE_NEON=ON',
+                    # '-DREQUIRE_SIMD=1',
 
-	def build_arch(self, arch):
-		super(JpegRecipe, self).build_arch(arch)
-		with current_directory(self.get_lib_dir(arch)):
-			shprint(sh.mv, 'libjpeg.a', 'libjpeg-orig.a')
-			shprint(sh.ar, '-rcT', 'libjpeg.a', 'libjpeg-orig.a', 'libsimd.a')
+                    # Force disable shared, with the static ones is enough
+                    '-DENABLE_SHARED=0',
+                    '-DENABLE_STATIC=1',
+                    _env=env)
+            shprint(sh.make, _env=env)
 
 
 recipe = JpegRecipe()

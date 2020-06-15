@@ -27,7 +27,6 @@ print('Imported kivy')
 from kivy.utils import platform
 print('platform is', platform)
 
-
 kv = '''
 #:import Metrics kivy.metrics.Metrics
 #:import sys sys
@@ -90,7 +89,7 @@ ScrollView:
             on_touch_down: print('touched at', args[-1].pos)
 
 <ErrorPopup>:
-    title: 'Error' 
+    title: 'Error'
     size_hint: 0.75, 0.75
     Label:
         text: root.error_text
@@ -124,31 +123,44 @@ class TestApp(App):
 
     def test_pyjnius(self, *args):
         try:
-            from jnius import autoclass
+            from jnius import autoclass, cast
         except ImportError:
             raise_error('Could not import pyjnius')
             return
-        
         print('Attempting to vibrate with pyjnius')
-        # PythonActivity = autoclass('org.renpy.android.PythonActivity')
-        # activity = PythonActivity.mActivity
+        ANDROID_VERSION = autoclass('android.os.Build$VERSION')
+        SDK_INT = ANDROID_VERSION.SDK_INT
+
+        Context = autoclass("android.content.Context")
         PythonActivity = autoclass('org.kivy.android.PythonActivity')
         activity = PythonActivity.mActivity
-        Intent = autoclass('android.content.Intent')
-        Context = autoclass('android.content.Context')
-        vibrator = activity.getSystemService(Context.VIBRATOR_SERVICE)
 
-        vibrator.vibrate(1000)
+        vibrator_service = activity.getSystemService(Context.VIBRATOR_SERVICE)
+        vibrator = cast("android.os.Vibrator", vibrator_service)
+
+        if vibrator and SDK_INT >= 26:
+            print("Using android's `VibrationEffect` (SDK >= 26)")
+            VibrationEffect = autoclass("android.os.VibrationEffect")
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    1000, VibrationEffect.DEFAULT_AMPLITUDE,
+                ),
+            )
+        elif vibrator:
+            print("Using deprecated android's vibrate (SDK < 26)")
+            vibrator.vibrate(1000)
+        else:
+            print('Something happened...vibrator service disabled?')
 
     def test_ctypes(self, *args):
         import ctypes
-            
+
     def test_numpy(self, *args):
         import numpy
 
         print(numpy.zeros(5))
         print(numpy.arange(5))
         print(numpy.random.random((3, 3)))
-                    
+
 
 TestApp().run()

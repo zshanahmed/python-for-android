@@ -2,23 +2,29 @@ print('main.py was successfully called')
 
 import os
 print('imported os')
+import sys
+print('imported sys')
 
 from kivy import platform
 
 if platform == 'android':
-    print('contents of ./lib/python2.7/site-packages/ etc.')
-    print(os.listdir('./lib'))
-    print(os.listdir('./lib/python2.7'))
-    print(os.listdir('./lib/python2.7/site-packages'))
+    site_dir_path = './_python_bundle/site-packages'
+    if not os.path.exists(site_dir_path):
+        print('warning: site-packages dir not found: ' + site_dir_path)
+    else:
+        print('contents of ' + site_dir_path)
+        print(os.listdir(site_dir_path))
 
     print('this dir is', os.path.abspath(os.curdir))
 
     print('contents of this dir', os.listdir('./'))
 
-    with open('./lib/python2.7/site-packages/kivy/app.pyo', 'rb') as fileh:
-        print('app.pyo size is', len(fileh.read()))
+    if (os.path.exists(site_dir_path) and
+            os.path.exists(site_dir_path + '/kivy/app.pyo')
+            ):
+        with open(site_dir_path + '/kivy/app.pyo', 'rb') as fileh:
+            print('app.pyo size is', len(fileh.read()))
 
-import sys
 print('pythonpath is', sys.path)
 
 import kivy
@@ -115,21 +121,34 @@ class TestApp(App):
 
     def test_pyjnius(self, *args):
         try:
-            from jnius import autoclass
+            from jnius import autoclass, cast
         except ImportError:
             raise_error('Could not import pyjnius')
             return
-        
         print('Attempting to vibrate with pyjnius')
-        # PythonActivity = autoclass('org.renpy.android.PythonActivity')
-        # activity = PythonActivity.mActivity
+        ANDROID_VERSION = autoclass('android.os.Build$VERSION')
+        SDK_INT = ANDROID_VERSION.SDK_INT
+
+        Context = autoclass("android.content.Context")
         PythonActivity = autoclass('org.kivy.android.PythonActivity')
         activity = PythonActivity.mActivity
-        Intent = autoclass('android.content.Intent')
-        Context = autoclass('android.content.Context')
-        vibrator = activity.getSystemService(Context.VIBRATOR_SERVICE)
 
-        vibrator.vibrate(1000)
+        vibrator_service = activity.getSystemService(Context.VIBRATOR_SERVICE)
+        vibrator = cast("android.os.Vibrator", vibrator_service)
+
+        if vibrator and SDK_INT >= 26:
+            print("Using android's `VibrationEffect` (SDK >= 26)")
+            VibrationEffect = autoclass("android.os.VibrationEffect")
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    1000, VibrationEffect.DEFAULT_AMPLITUDE,
+                ),
+            )
+        elif vibrator:
+            print("Using deprecated android's vibrate (SDK < 26)")
+            vibrator.vibrate(1000)
+        else:
+            print('Something happened...vibrator service disabled?')
 
     def test_ctypes(self, *args):
         import ctypes

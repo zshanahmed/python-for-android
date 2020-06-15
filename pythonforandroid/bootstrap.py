@@ -1,15 +1,66 @@
-from os.path import (join, dirname, isdir, splitext, basename, realpath)
-from os import listdir, mkdir
-import sh
+import functools
 import glob
-import json
 import importlib
+import os
+from os.path import (join, dirname, isdir, normpath, splitext, basename)
+from os import listdir, walk, sep
+import sh
+import shlex
+import shutil
 
-from pythonforandroid.logger import (warning, shprint, info, logger,
-                                     debug)
-from pythonforandroid.util import (current_directory, ensure_dir,
-                                   temp_directory, which)
+from pythonforandroid.logger import (shprint, info, logger, debug)
+from pythonforandroid.util import (
+    current_directory, ensure_dir, temp_directory, BuildInterruptingException)
 from pythonforandroid.recipe import Recipe
+
+
+def copy_files(src_root, dest_root, override=True):
+    for root, dirnames, filenames in walk(src_root):
+        for filename in filenames:
+            subdir = normpath(root.replace(src_root, ""))
+            if subdir.startswith(sep):  # ensure it is relative
+                subdir = subdir[1:]
+            dest_dir = join(dest_root, subdir)
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
+            src_file = join(root, filename)
+            dest_file = join(dest_dir, filename)
+            if os.path.isfile(src_file):
+                if override and os.path.exists(dest_file):
+                    os.unlink(dest_file)
+                if not os.path.exists(dest_file):
+                    shutil.copy(src_file, dest_file)
+            else:
+                os.makedirs(dest_file)
+
+
+default_recipe_priorities = [
+    "webview", "sdl2", "service_only"  # last is highest
+]
+# ^^ NOTE: these are just the default priorities if no special rules
+# apply (which you can find in the code below), so basically if no
+# known graphical lib or web lib is used - in which case service_only
+# is the most reasonable guess.
+
+
+def _cmp_bootstraps_by_priority(a, b):
+    def rank_bootstrap(bootstrap):
+        """ Returns a ranking index for each bootstrap,
+            with higher priority ranked with higher number. """
+        if bootstrap.name in default_recipe_priorities:
+            return default_recipe_priorities.index(bootstrap.name) + 1
+        return 0
+
+    # Rank bootstraps in order:
+    rank_a = rank_bootstrap(a)
+    rank_b = rank_bootstrap(b)
+    if rank_a != rank_b:
+        return (rank_b - rank_a)
+    else:
+        if a.name < b.name:  # alphabetic sort for determinism
+            return -1
+        else:
+            return 1
 
 
 class Bootstrap(object):
@@ -23,11 +74,11 @@ class Bootstrap(object):
     bootstrap_dir = None
 
     build_dir = None
-    dist_dir = None
     dist_name = None
     distribution = None
 
-    recipe_depends = ['sdl2']
+    # All bootstraps should include Python in some way:
+    recipe_depends = [("python2", "python3"), 'android']
 
     can_be_chosen_automatically = True
     '''Determines whether the bootstrap can be chosen as one that
@@ -44,9 +95,9 @@ class Bootstrap(object):
     def dist_dir(self):
         '''The dist dir at which to place the finished distribution.'''
         if self.distribution is None:
-            warning('Tried to access {}.dist_dir, but {}.distribution '
-                    'is None'.format(self, self))
-            exit(1)
+            raise BuildInterruptingException(
+                'Internal error: tried to access {}.dist_dir, but {}.distribution '
+                'is None'.format(self, self))
         return self.distribution.dist_dir
 
     @property
@@ -78,6 +129,9 @@ class Bootstrap(object):
     def get_dist_dir(self, name):
         return join(self.ctx.dist_dir, name)
 
+    def get_common_dir(self):
+        return os.path.abspath(join(self.bootstrap_dir, "..", 'common'))
+
     @property
     def name(self):
         modname = self.__class__.__module__
@@ -87,9 +141,10 @@ class Bootstrap(object):
         '''Ensure that a build dir exists for the recipe. This same single
         dir will be used for building all different archs.'''
         self.build_dir = self.get_build_dir()
-        shprint(sh.cp, '-r',
-                join(self.bootstrap_dir, 'build'),
-                self.build_dir)
+        self.common_dir = self.get_common_dir()
+        copy_files(join(self.bootstrap_dir, 'build'), self.build_dir)
+        copy_files(join(self.common_dir, 'build'), self.build_dir,
+                   override=False)
         if self.ctx.symlink_java_src:
             info('Symlinking java src instead of copying')
             shprint(sh.rm, '-r', join(self.build_dir, 'src'))
@@ -101,58 +156,54 @@ class Bootstrap(object):
             with open('project.properties', 'w') as fileh:
                 fileh.write('target=android-{}'.format(self.ctx.android_api))
 
-    def prepare_dist_dir(self, name):
-        # self.dist_dir = self.get_dist_dir(name)
+    def prepare_dist_dir(self):
         ensure_dir(self.dist_dir)
 
     def run_distribute(self):
-        # print('Default bootstrap being used doesn\'t know how '
-        #       'to distribute...failing.')
-        # exit(1)
-        with current_directory(self.dist_dir):
-            info('Saving distribution info')
-            with open('dist_info.json', 'w') as fileh:
-                json.dump({'dist_name': self.ctx.dist_name,
-                           'bootstrap': self.ctx.bootstrap.name,
-                           'archs': [arch.arch for arch in self.ctx.archs],
-                           'recipes': self.ctx.recipe_build_order + self.ctx.python_modules},
-                          fileh)
+        self.distribution.save_info(self.dist_dir)
 
     @classmethod
-    def list_bootstraps(cls):
+    def all_bootstraps(cls):
         '''Find all the available bootstraps and return them.'''
-        forbidden_dirs = ('__pycache__', )
+        forbidden_dirs = ('__pycache__', 'common')
         bootstraps_dir = join(dirname(__file__), 'bootstraps')
+        result = set()
         for name in listdir(bootstraps_dir):
             if name in forbidden_dirs:
                 continue
             filen = join(bootstraps_dir, name)
             if isdir(filen):
-                yield name
+                result.add(name)
+        return result
 
     @classmethod
-    def get_bootstrap_from_recipes(cls, recipes, ctx):
-        '''Returns a bootstrap whose recipe requirements do not conflict with
-        the given recipes.'''
+    def get_usable_bootstraps_for_recipes(cls, recipes, ctx):
+        '''Returns all bootstrap whose recipe requirements do not conflict
+        with the given recipes, in no particular order.'''
         info('Trying to find a bootstrap that matches the given recipes.')
         bootstraps = [cls.get_bootstrap(name, ctx)
-                      for name in cls.list_bootstraps()]
-        acceptable_bootstraps = []
+                      for name in cls.all_bootstraps()]
+        acceptable_bootstraps = set()
+
+        # Find out which bootstraps are acceptable:
         for bs in bootstraps:
             if not bs.can_be_chosen_automatically:
                 continue
-            possible_dependency_lists = expand_dependencies(bs.recipe_depends)
+            possible_dependency_lists = expand_dependencies(bs.recipe_depends, ctx)
             for possible_dependencies in possible_dependency_lists:
                 ok = True
+                # Check if the bootstap's dependencies have an internal conflict:
                 for recipe in possible_dependencies:
                     recipe = Recipe.get_recipe(recipe, ctx)
                     if any([conflict in recipes for conflict in recipe.conflicts]):
                         ok = False
                         break
+                # Check if bootstrap's dependencies conflict with chosen
+                # packages:
                 for recipe in recipes:
                     try:
                         recipe = Recipe.get_recipe(recipe, ctx)
-                    except IOError:
+                    except ValueError:
                         conflicts = []
                     else:
                         conflicts = recipe.conflicts
@@ -160,15 +211,59 @@ class Bootstrap(object):
                             for conflict in conflicts]):
                         ok = False
                         break
-                if ok:
-                    acceptable_bootstraps.append(bs)
+                if ok and bs not in acceptable_bootstraps:
+                    acceptable_bootstraps.add(bs)
+
         info('Found {} acceptable bootstraps: {}'.format(
             len(acceptable_bootstraps),
             [bs.name for bs in acceptable_bootstraps]))
-        if acceptable_bootstraps:
-            info('Using the first of these: {}'
-                 .format(acceptable_bootstraps[0].name))
-            return acceptable_bootstraps[0]
+        return acceptable_bootstraps
+
+    @classmethod
+    def get_bootstrap_from_recipes(cls, recipes, ctx):
+        '''Picks a single recommended default bootstrap out of
+           all_usable_bootstraps_from_recipes() for the given reicpes,
+           and returns it.'''
+
+        known_web_packages = {"flask"}  # to pick webview over service_only
+        recipes_with_deps_lists = expand_dependencies(recipes, ctx)
+        acceptable_bootstraps = cls.get_usable_bootstraps_for_recipes(
+            recipes, ctx
+        )
+
+        def have_dependency_in_recipes(dep):
+            for dep_list in recipes_with_deps_lists:
+                if dep in dep_list:
+                    return True
+            return False
+
+        # Special rule: return SDL2 bootstrap if there's an sdl2 dep:
+        if (have_dependency_in_recipes("sdl2") and
+                "sdl2" in [b.name for b in acceptable_bootstraps]
+                ):
+            info('Using sdl2 bootstrap since it is in dependencies')
+            return cls.get_bootstrap("sdl2", ctx)
+
+        # Special rule: return "webview" if we depend on common web recipe:
+        for possible_web_dep in known_web_packages:
+            if have_dependency_in_recipes(possible_web_dep):
+                # We have a web package dep!
+                if "webview" in [b.name for b in acceptable_bootstraps]:
+                    info('Using webview bootstrap since common web packages '
+                         'were found {}'.format(
+                             known_web_packages.intersection(recipes)
+                         ))
+                    return cls.get_bootstrap("webview", ctx)
+
+        prioritized_acceptable_bootstraps = sorted(
+            list(acceptable_bootstraps),
+            key=functools.cmp_to_key(_cmp_bootstraps_by_priority)
+        )
+
+        if prioritized_acceptable_bootstraps:
+            info('Using the highest ranked/first of these: {}'
+                 .format(prioritized_acceptable_bootstraps[0].name))
+            return prioritized_acceptable_bootstraps[0]
         return None
 
     @classmethod
@@ -178,8 +273,6 @@ class Bootstrap(object):
         This is the only way you should access a bootstrap class, as
         it sets the bootstrap directory correctly.
         '''
-        # AND: This method will need to check user dirs, and access
-        # bootstraps in a slightly different way
         if name is None:
             return None
         if not hasattr(cls, 'bootstraps'):
@@ -195,20 +288,21 @@ class Bootstrap(object):
         bootstrap.ctx = ctx
         return bootstrap
 
-    def distribute_libs(self, arch, src_dirs, wildcard='*'):
+    def distribute_libs(self, arch, src_dirs, wildcard='*', dest_dir="libs"):
         '''Copy existing arch libs from build dirs to current dist dir.'''
         info('Copying libs')
-        tgt_dir = join('libs', arch.arch)
+        tgt_dir = join(dest_dir, arch.arch)
         ensure_dir(tgt_dir)
         for src_dir in src_dirs:
             for lib in glob.glob(join(src_dir, wildcard)):
                 shprint(sh.cp, '-a', lib, tgt_dir)
 
-    def distribute_javaclasses(self, javaclass_dir):
+    def distribute_javaclasses(self, javaclass_dir, dest_dir="src"):
         '''Copy existing javaclasses from build dir to current dist dir.'''
         info('Copying java files')
+        ensure_dir(dest_dir)
         for filename in glob.glob(javaclass_dir):
-            shprint(sh.cp, '-a', filename, 'src')
+            shprint(sh.cp, '-a', filename, dest_dir)
 
     def distribute_aars(self, arch):
         '''Process existing .aar bundles and copy to current dist dir.'''
@@ -246,20 +340,21 @@ class Bootstrap(object):
 
     def strip_libraries(self, arch):
         info('Stripping libraries')
-        if self.ctx.python_recipe.from_crystax:
-            info('Python was loaded from CrystaX, skipping strip')
-            return
         env = arch.get_env()
-        strip = which('arm-linux-androideabi-strip', env['PATH'])
-        if strip is None:
-            warning('Can\'t find strip in PATH...')
-            return
-        strip = sh.Command(strip)
-        filens = shprint(sh.find, join(self.dist_dir, 'private'),
-                         join(self.dist_dir, 'libs'),
+        tokens = shlex.split(env['STRIP'])
+        strip = sh.Command(tokens[0])
+        if len(tokens) > 1:
+            strip = strip.bake(tokens[1:])
+
+        libs_dir = join(self.dist_dir, '_python_bundle',
+                        '_python_bundle', 'modules')
+        filens = shprint(sh.find, libs_dir, join(self.dist_dir, 'libs'),
                          '-iname', '*.so', _env=env).stdout.decode('utf-8')
+
         logger.info('Stripping libraries in private dir')
         for filen in filens.split('\n'):
+            if not filen:
+                continue  # skip the last ''
             try:
                 strip(filen, _env=env)
             except sh.ErrorReturnCode_1:
@@ -277,9 +372,31 @@ class Bootstrap(object):
                 shprint(sh.rm, '-rf', d)
 
 
-def expand_dependencies(recipes):
+def expand_dependencies(recipes, ctx):
+    """ This function expands to lists of all different available
+        alternative recipe combinations, with the dependencies added in
+        ONLY for all the not-with-alternative recipes.
+        (So this is like the deps graph very simplified and incomplete, but
+         hopefully good enough for most basic bootstrap compatibility checks)
+    """
+
+    # Add in all the deps of recipes where there is no alternative:
+    recipes_with_deps = list(recipes)
+    for entry in recipes:
+        if not isinstance(entry, (tuple, list)) or len(entry) == 1:
+            if isinstance(entry, (tuple, list)):
+                entry = entry[0]
+            try:
+                recipe = Recipe.get_recipe(entry, ctx)
+                recipes_with_deps += recipe.depends
+            except ValueError:
+                # it's a pure python package without a recipe, so we
+                # don't know the dependencies...skipping for now
+                pass
+
+    # Split up lists by available alternatives:
     recipe_lists = [[]]
-    for recipe in recipes:
+    for recipe in recipes_with_deps:
         if isinstance(recipe, (tuple, list)):
             new_recipe_lists = []
             for alternative in recipe:
@@ -289,6 +406,6 @@ def expand_dependencies(recipes):
                     new_recipe_lists.append(new_list)
             recipe_lists = new_recipe_lists
         else:
-            for old_list in recipe_lists:
-                old_list.append(recipe)
+            for existing_list in recipe_lists:
+                existing_list.append(recipe)
     return recipe_lists

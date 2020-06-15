@@ -1,4 +1,5 @@
 from os import uname
+from distutils.version import LooseVersion
 
 
 def check_all(*callables):
@@ -17,6 +18,7 @@ def is_platform(platform):
     def is_x(**kwargs):
         return uname()[0] == platform
     return is_x
+
 
 is_linux = is_platform('Linux')
 is_darwin = is_platform('Darwin')
@@ -69,3 +71,19 @@ def is_ndk(ndk):
         return recipe.ctx.ndk == ndk
     return is_x
 
+
+def is_version_gt(version):
+    def is_x(recipe, **kwargs):
+        return LooseVersion(recipe.version) > version
+
+
+def is_version_lt(version):
+    def is_x(recipe, **kwargs):
+        return LooseVersion(recipe.version) < version
+    return is_x
+
+
+def version_starts_with(version):
+    def is_x(recipe, **kwargs):
+        return recipe.version.startswith(version)
+    return is_x

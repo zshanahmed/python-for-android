@@ -1,12 +1,10 @@
 
-from pythonforandroid.toolchain import PythonRecipe, shprint, current_directory, ArchARM
-from os.path import exists, join
-import sh
-import glob
+from pythonforandroid.recipe import PythonRecipe
+
 
 class PySDL2Recipe(PythonRecipe):
-    version = '0.9.3'
-    url = 'https://bitbucket.org/marcusva/py-sdl2/downloads/PySDL2-{version}.tar.gz'
+    version = '0.9.6'
+    url = 'https://files.pythonhosted.org/packages/source/P/PySDL2/PySDL2-{version}.tar.gz'
 
     depends = ['sdl2']
 

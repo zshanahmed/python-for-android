@@ -1,10 +1,19 @@
+Special Edition for MobileInsight
+================================
+
+The changes made to the original python-for-android project include:
+
++ added `mobileinsight` recipe.
+
+## Note
+
++ For developers: to debug the mobileInsight-desktop locally without
+pushing to remote repo, go to `python-for-android/pythonforandroid/recipes/mobileinsight/__init__.py`,
+and change line 9 and line 10 according to the instructions. Then re-install
+python-for-android.
+
 python-for-android
 ==================
-
-[![Build Status](https://travis-ci.org/kivy/python-for-android.svg?branch=develop)](https://travis-ci.org/kivy/python-for-android)
-[![Coverage Status](https://coveralls.io/repos/github/kivy/python-for-android/badge.svg?branch=develop&kill_cache=1)](https://coveralls.io/github/kivy/python-for-android?branch=develop)
-[![Backers on Open Collective](https://opencollective.com/kivy/backers/badge.svg)](#backers)
-[![Sponsors on Open Collective](https://opencollective.com/kivy/sponsors/badge.svg)](#sponsors)
 
 python-for-android is a packaging tool for Python apps on Android. You can
 create your own Python distribution including the modules and

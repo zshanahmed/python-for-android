@@ -15,7 +15,7 @@ LOCAL_DEBUG = False
 class MobileInsightRecipe(Recipe):
     mi_git = 'https://github.com/mobile-insight/mobileinsight-core.git'
     mi_branch = 'dev-py3'
-    local_src = '/Users/yuanjieli/Desktop/MI-5.0/mobileinsight-core'
+    local_src = '/home/vagrant/mi-dev/mobileinsight-core'
     version = '5.0'
     toolchain_version = 4.9  # default GCC toolchain version we try to use
     depends = ['python3']  # any other recipe names that must be built before this one

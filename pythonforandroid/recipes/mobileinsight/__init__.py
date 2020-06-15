@@ -1,5 +1,4 @@
 # MobileInsight Recipe for python-for-android
-<<<<<<< HEAD
 # Authors: Zengwen Yuan, Jiayao Li
 
 from pythonforandroid.toolchain import Recipe, shprint, current_directory
@@ -18,28 +17,6 @@ class MobileInsightRecipe(Recipe):
     version           = '2.5'
     toolchain_version = 4.9          # default GCC toolchain version we try to use
     depends           = ['python2']  # any other recipe names that must be built before this one
-=======
-# Authors: Zengwen Yuan, Jiayao Li,
-# Update for py3: Yunqi Guo, 2020.04
-
-import glob
-from os.path import exists, join, isdir, split
-
-import sh
-from pythonforandroid.logger import info, shprint, warning
-from pythonforandroid.toolchain import Recipe, current_directory
-
-LOCAL_DEBUG = False
-
-
-class MobileInsightRecipe(Recipe):
-    mi_git = 'https://github.com/mobile-insight/mobileinsight-core.git'
-    mi_branch = 'dev-py3'
-    local_src = '/home/vagrant/mi-dev/mobileinsight-core'
-    version = '5.0'
-    toolchain_version = 4.9  # default GCC toolchain version we try to use
-    depends = ['python3']  # any other recipe names that must be built before this one
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 
     def get_newest_toolchain(self, arch):
 
@@ -47,13 +24,8 @@ class MobileInsightRecipe(Recipe):
         # [WARNING]: get_newest_toolchain(self, arch), toolchain prefix = arm-linux-androideabi
 
         toolchain_versions = []
-<<<<<<< HEAD
         toolchain_prefix   = arch.toolchain_prefix
         toolchain_path     = join(self.ctx.ndk_dir, 'toolchains')
-=======
-        toolchain_prefix = arch.toolchain_prefix
-        toolchain_path = join(self.ctx.ndk_dir, 'toolchains')
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
         if isdir(toolchain_path):
             toolchain_contents = glob.glob('{}/{}-*'.format(toolchain_path,
                                                             toolchain_prefix))
@@ -66,17 +38,10 @@ class MobileInsightRecipe(Recipe):
         toolchain_versions_gcc = []
         for toolchain_version in toolchain_versions:
             if toolchain_version[0].isdigit():
-<<<<<<< HEAD
                 toolchain_versions_gcc.append(toolchain_version) # GCC toolchains begin with a number
 
         if toolchain_versions:
             toolchain_version = toolchain_versions_gcc[-1] # the latest gcc toolchain
-=======
-                toolchain_versions_gcc.append(toolchain_version)  # GCC toolchains begin with a number
-
-        if toolchain_versions:
-            toolchain_version = toolchain_versions_gcc[-1]  # the latest gcc toolchain
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
         else:
             warning('Could not find any toolchain for {}!'.format(toolchain_prefix))
 
@@ -85,7 +50,6 @@ class MobileInsightRecipe(Recipe):
     def get_recipe_env(self, arch):
         env = super(MobileInsightRecipe, self).get_recipe_env(arch)
 
-<<<<<<< HEAD
         warning("get_recipe_env(self, arch), use toolchain version = {toolchain_version}".format(
             toolchain_version   = self.toolchain_version))
         env['CFLAGS'] += ' -fPIC'
@@ -103,34 +67,6 @@ class MobileInsightRecipe(Recipe):
         env['LDFLAGS'] += ' -shared'
         env['LDFLAGS'] += ' -lgnustl_shared -llog'
         env['STRIP']    = str.split(env['STRIP'])[0]
-=======
-        # warning("get_recipe_env(self, arch), use toolchain version = {toolchain_version}".format(
-        #     toolchain_version=self.toolchain_version))
-        env['CFLAGS'] += ' -fPIC'
-
-        env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/llvm-libc++/include'.format(
-            ndk_dir=self.ctx.ndk_dir,
-            toolchain_version=self.toolchain_version)
-        env['CFLAGS'] += ' -I{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}/include'.format(
-            ndk_dir=self.ctx.ndk_dir,
-            toolchain_version=self.toolchain_version,
-            arch=arch)
-        env['CFLAGS'] += ' -I{}'.format(
-            self.ctx.python_recipe.include_root(arch.arch)
-        )
-        env['LDFLAGS'] += ' -L{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}'.format(
-            ndk_dir=self.ctx.ndk_dir,
-            toolchain_version=self.toolchain_version,
-            arch=arch)
-        env['LDFLAGS'] += ' -L{} -lpython{}'.format(
-            self.ctx.python_recipe.link_root(arch.arch),
-            self.ctx.python_recipe.major_minor_version_string,
-        )
-
-        env['LDFLAGS'] += ' -shared'
-        env['LDFLAGS'] += ' -lc++_shared -llog'
-        env['STRIP'] = str.split(env['STRIP'])[0]
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 
         # warning("Testing the env")
         # shprint(sh.echo, '$PATH', _env=env)
@@ -141,10 +77,7 @@ class MobileInsightRecipe(Recipe):
         # warning("self.ctx.bootstrap.build_dir = {}".format(self.ctx.bootstrap.build_dir))
         return env
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
     def prebuild_arch(self, arch):
         super(MobileInsightRecipe, self).prebuild_arch(arch)
 
@@ -154,13 +87,8 @@ class MobileInsightRecipe(Recipe):
         try:
             shprint(sh.rm, '-r',
                     build_dir,
-<<<<<<< HEAD
                     _tail     = 20,
                     _critical = True)
-=======
-                    _tail=20,
-                    _critical=True)
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
         except:
             pass
 
@@ -172,60 +100,35 @@ class MobileInsightRecipe(Recipe):
                     '--depth=1',
                     self.mi_git,
                     tmp_dir,
-<<<<<<< HEAD
                     _tail     = 20,
                     _critical = True)
-=======
-                    _tail=20,
-                    _critical=True)
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
         else:
             warning("Debugging using local sources of MobileInsight at {}".format(self.local_src))
             shprint(sh.mkdir,
                     build_dir,
-<<<<<<< HEAD
                     _tail     = 20,
                     _critical = True)
             shprint(sh.mkdir,
                     tmp_dir,
                     _tail     = 20,
                     _critical = True)
-=======
-                    _tail=20,
-                    _critical=True)
-            shprint(sh.mkdir,
-                    tmp_dir,
-                    _tail=20,
-                    _critical=True)
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
             shprint(sh.cp,
                     '-fr',
                     self.local_src,
                     tmp_dir,
-<<<<<<< HEAD
                     _tail     = 20,
                     _critical = True)
-=======
-                    _tail=20,
-                    _critical=True)
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
             tmp_dir = join(tmp_dir, 'mobileinsight-core')
 
         shprint(sh.mv,
                 join(tmp_dir, 'mobile_insight'),
                 build_dir,
-<<<<<<< HEAD
                 _tail     = 20,
                 _critical = True)
-=======
-                _tail=20,
-                _critical=True)
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 
         shprint(sh.mv,
                 join(tmp_dir, 'dm_collector_c'),
                 build_dir,
-<<<<<<< HEAD
                 _tail     = 20,
                 _critical = True)
 
@@ -237,18 +140,6 @@ class MobileInsightRecipe(Recipe):
         self.get_newest_toolchain(arch)
 
 
-=======
-                _tail=20,
-                _critical=True)
-
-        # remove unnecessary codes
-        shprint(sh.rm, '-r', tmp_dir,
-                _tail=20,
-                _critical=True)
-
-        self.get_newest_toolchain(arch)
-
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
     def build_arch(self, arch):
         super(MobileInsightRecipe, self).build_arch(arch)
 
@@ -257,35 +148,21 @@ class MobileInsightRecipe(Recipe):
 
         with current_directory(self.get_build_dir(arch.arch)):
             hostpython = sh.Command(self.ctx.hostpython)
-<<<<<<< HEAD
             app_mk     = join(self.get_build_dir(arch.arch), 'Application.mk')
             app_setup  = join(self.get_build_dir(arch.arch), 'setup.py')
-=======
-            app_mk = join(self.get_build_dir(arch.arch), 'Application.mk')
-            app_setup = join(self.get_build_dir(arch.arch), 'setup.py')
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 
             if not exists(app_mk):
                 shprint(sh.cp, join(self.get_recipe_dir(), 'Application.mk'), app_mk)
             if not exists(app_setup):
                 shprint(sh.cp, join(self.get_recipe_dir(), 'setup.py'), app_setup)
 
-<<<<<<< HEAD
             shprint(hostpython, 'setup.py', 'build_ext', '-v', _env = env, _tail = 10, _critical = True)
             shprint(hostpython, 'setup.py', 'install',  '-O2', _env = env, _tail = 10, _critical = True)
-=======
-            shprint(hostpython, 'setup.py', 'build_ext', '-v', _env=env, _tail=10, _critical=True)
-            shprint(hostpython, 'setup.py', 'install', '-O2',
-                '--root={}'.format(self.ctx.get_python_install_dir()),
-                '--install-lib=.',
-                _env=env, _tail=10, _critical=True)
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 
             build_lib = glob.glob('./build/lib*')
             assert len(build_lib) == 1
             warning('MobileInsight -- stripping mobileinsight')
 
-<<<<<<< HEAD
             shprint(sh.find, build_lib[0], '-name', '*.so', '-exec', env['STRIP'], '{}', ';', _tail = 20, _critical = True)
 
         try:
@@ -302,25 +179,6 @@ class MobileInsightRecipe(Recipe):
                     arch              = arch))
         except:
             warning('Failed to copy GNU STL shared lib!')
-=======
-            shprint(sh.find, build_lib[0], '-name', '*.so', '-exec', env['STRIP'], '{}', ';', _tail=20, _critical=True)
-
-        try:
-            warning('Copying LLVM libc++ STL shared lib to {libs_dir}/{arch}'.format(
-                libs_dir=self.ctx.libs_dir,
-                arch=arch))
-
-            shprint(sh.cp,
-                    '{ndk_dir}/sources/cxx-stl/llvm-libc++/libs/{arch}/libc++_shared.so'.format(
-                        ndk_dir=self.ctx.ndk_dir,
-                        toolchain_version=self.toolchain_version,
-                        arch=arch),
-                    '{libs_dir}/{arch}'.format(
-                        libs_dir=self.ctx.libs_dir,
-                        arch=arch))
-        except:
-            warning('Failed to copy LLVM libc++ STL shared lib!')
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 
     def build_cython_components(self, arch):
         env = self.get_recipe_env(arch)
@@ -358,14 +216,7 @@ class MobileInsightRecipe(Recipe):
         super(MobileInsightRecipe, self).postbuild_arch(arch)
 
         # TODO
-<<<<<<< HEAD
         warning('Should remove mobileinsight build tools here, skipping for now')
         #     try rm -rf $BUILD_PATH/python-install/lib/python*/site-packages/mobile_insight/tools
 
-=======
-        # warning('Should remove mobileinsight build tools here, skipping for now')
-        #     try rm -rf $BUILD_PATH/python-install/lib/python*/site-packages/mobile_insight/tools
-
-
->>>>>>> 396538351d0baa02bfe12bd3365bf860f99c72a2
 recipe = MobileInsightRecipe()

@@ -11,7 +11,7 @@ LOCAL_DEBUG = False
 
 class MobileInsightRecipe(Recipe):
 
-    mi_git            = 'https://github.com/mobile-insight/mobileinsight-core.git'
+    mi_git            = 'https://github.com/zshanahmed/mobileinsight-core.git'
     mi_branch         = 'master'
     local_src         = '/home/vagrant/mi-dev/mobileinsight-core'
     version           = '2.5'
